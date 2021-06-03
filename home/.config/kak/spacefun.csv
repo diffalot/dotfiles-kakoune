@@ -1,0 +1,10 @@
+'<space>',echo "exec <space>",Clear selection 
+'x',echo "extend-line-up %val{count}<ret>",Select line up
+'X',echo "extend-line-down %val{count}<ret>",Select line down
+'h',tmux select-pane -l,Select left pane 
+'j',tmux select-pane -D,Select below pane 
+'k',tmux select-pane -U,Select above pane 
+'l',tmux select-pane -R,Select right pane
+'f',echo "find-file",Find file 
+'s',echo "find-symbl",Find symbol 
+'w',echo "write",Write buffer 

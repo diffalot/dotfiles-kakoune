@@ -1,0 +1,40 @@
+## kak-lsp Servers Configurations
+## https://github.com/kak-lsp/kak-lsp
+#####################################
+# 
+# Python
+# pip install 'python-language-server[all]
+#
+# python-language-server does not currently use initialization options python-language-server#403, so you can not configure it via kak-lsp.toml. Instead, use the lsp_server_configuration option in your kakrc:
+# > set-option global lsp_server_configuration pyls.configurationSources=["flake8"]
+#
+# Rust
+# rustup component add rls rust-analysis rust-src
+# 
+# Bash
+# npm i -g bash-language-server
+[language.javascript]
+filetypes = ["javascript"]
+roots = ["package.json"]
+command = "language-server-stdio"
+#npm install -g typescript-language-server
+
+[language.typescript]
+filetypes = ["typescript", "javascript"]
+roots = ["package.json"]
+command = "typescript-language-server"
+args = ["--stdio"]
+#npm install -g typescript
+#npm install -g typescript-language-server
+
+[language.deno]
+filetypes = ["typescript", "javascript"]
+roots = [".git"]
+command = "deno"
+args = ["lsp"]
+
+[language.deno.initialization_options]
+enable = true
+lint = true
+
+
