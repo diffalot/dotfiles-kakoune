@@ -1,25 +1,42 @@
-# Kakoune Configuration
+## Kakoune Configuration
 ## https://github.com/mawww/kakoune/wiki
 ########################################
-##
-## TODO: highlight TODO FIX LOL XXX
-## TODO: create a simple theme
-##
+#
+# TODO:
+# - F10 Code Analysis
+#     - c => ctags
+#     - t => syntax tree
+# - F1 The Fucking Manuals (prompt or fall back to selection)
+#     - :doc-search
+#     - man
+#     - google search
+#     - stash a bunch of crap and fzf it in narrower loops
 
-# Functions First
-# ===============
 
-def -params 1 extend-line-down %{
-  exec "<a-:>%arg{1}X"
-}
-def -params 1 extend-line-up %{
-  exec "<a-:><a-;>%arg{1}K<a-;>"
-  try %{
-    exec -draft ';<a-K>\n<ret>'
-    exec X
-  }
-  exec '<a-;><a-X>'
-}
+# File format hooks are mainly set here, but will also be tabs in smarttab.kak
+# if they deviate from the global default of always expanding a four space base
+# tab size that is set in Smarttab
+
+#hook global WinSetOption filetype=fish {
+#    set-option lint
+#}
+
+
+## functions Before Mappings
+## (it was important for the line extension functions)
+## ===================================================
+
+#def -params 1 extend-line-down %{
+#  exec "<a-:>%arg{1}X"
+#}
+#def -params 1 extend-line-up %{
+#  exec "<a-:><a-;>%arg{1}K<a-;>"
+#  try %{
+#    exec -draft ';<a-K>\n<ret>'
+#    exec X
+#  }
+#  exec '<a-;><a-X>'
+#}
 
 #def -allow-override space-fn %{
 def space-fn %{
@@ -56,6 +73,11 @@ def space-fn %{
 # Mappings
 #=========
 
+# space is my leader
+map global normal <space> , -docstring 'leader'
+map global normal <backspace> <space> -docstring 'remove all sels except main'
+map global normal <a-backspace> <a-space> -docstring 'remove main sel'
+
 # Modes and Menus
 map global user l %{: enter-user-mode lsp<ret>} -docstring "Language Server Mode"
 map global user f %{: fzf-mode<ret>} -docstring "Fuzzy Finder Mode"
@@ -67,10 +89,8 @@ map global user > %{: tmux-terminal-horizontal kak -c %val{session} <space><ret>
 map global user v %{: tmux-terminal-vertical fish<ret> } -docstring "New Terminal Below"
 map global user . %{: tmux-terminal-horizontal fish<ret> } -docstring "New Terminal to Right"
 
-# space is my leader
-map global normal <space> , -docstring 'leader'
-map global normal <backspace> <space> -docstring 'remove all sels except main'
-map global normal <a-backspace> <a-space> -docstring 'remove main sel'
+# Open  Journal
+map -docstring "Open Journal (wiki)" global user w %{ :tmux-terminal-horizontal kak -c %val{session} $HOME/cronofiles/journal/index.md <space><ret> }
 
 # kak administration
 map -docstring "edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
@@ -81,8 +101,8 @@ map -docstring "wrap selection to 79 character wide" global user p '|par 79<ret>
 
 map global user m -docstring "Show space help" :space-fn<ret>
 
-map global normal X ':extend-line-down %val{count}<ret>'
-map global normal x ':extend-line-up %val{count}<ret>'
+#map global normal X ':extend-line-down %val{count}<ret>'
+#map global normal x ':extend-line-up %val{count}<ret>'
 
 # General Editing Settings
 # ========================
@@ -193,8 +213,9 @@ hook global WinSetOption filetype=rust %{
 
 # Inlay Diagnostics
 # https://github.com/kak-lsp/kak-lsp#inlay-diagnostics
-# kak-lsp supports showing diagnostics inline after their respective line, but this behaviour can be somewhat buggy and must be enabled explicitly:
-lsp-inlay-diagnostics-enable global
+# kak-lsp supports showing diagnostics inline after their respective line, but
+# this behaviour can be somewhat buggy and must be enabled explicitly:
+# lsp-inlay-diagnostics-enable global
 
 # Snippets
 # https://github.com/kak-lsp/kak-lsp#snippets
@@ -242,10 +263,10 @@ plug "schemar/kak-jsts" config %{
 # https://github.com/occivink/kakoune-vertical-selection
 # ------------------------------------------------------
 plug 'occivink/kakoune-vertical-selection' config %{
-    map global user v     ': vertical-selection-down<ret>'
-    map global user <a-v> ': vertical-selection-up<ret>'
-    map global user V     ': vertical-selection-up-and-down<ret>'
+    map global normal <c-V> ': vertical-selection-up<ret>'
+    map global normal <c-v> ': vertical-selection-down<ret>'
 }
+
 
 # KakTree
 # https://github.com/andreyorst/kaktree
@@ -271,6 +292,38 @@ plug 'topisani/sidetree'
 plug 'TeddyDD/kakoune-wiki'
 wiki-setup %sh{ echo $HOME/cronofiles }
 
+# Git Porcelain
+# https://github.com/chambln/kakoune-kit
+# --------------------------------------
+plug 'chambln/kakoune-kit' config %{
+    map global user <f7> ': git status -bs<ret>' -docstring 'git status'
+    hook global WinSetOption filetype=git-status %{
+        map window normal c ': git commit --verbose '
+        map window normal l ': git log --oneline --graph<ret>'
+        map window normal d ': -- %val{selections}<a-!><home> git diff '
+        map window normal D ': -- %val{selections}<a-!><home> git diff --cached '
+        map window normal a ': -- %val{selections}<a-!><home> git add '
+        map window normal A ': -- %val{selections}<a-!><home> repl git add -p '
+        map window normal r ': -- %val{selections}<a-!><home> git reset '
+        map window normal R ': -- %val{selections}<a-!><home> repl git reset -p '
+        map window normal o ': -- %val{selections}<a-!><home> git checkout '
+    }
+    hook global WinSetOption filetype=git-log %{
+        map window normal d     ': %val{selections}<a-!><home> git diff '
+        map window normal <ret> ': %val{selections}<a-!><home> git show '
+        map window normal r     ': %val{selections}<a-!><home> git reset '
+        map window normal R     ': %val{selections}<a-!><home> repl git reset -p '
+        map window normal o     ': %val{selections}<a-!><home> git checkout '
+    }
+}
+
+# Kak ANSI
+# https://github.com/eraserhd/kak-ansi
+# ------------------------------------
+plug 'eraserhd/kak-ansi' do %{
+    make
+}
+
 # fzf.kak
 # https://github.com/andreyorst/fzf.kak
 # -------------------------------------
@@ -287,20 +340,20 @@ plug "alexherbo2/palette.kak"
 # -----------------------------------------------
 plug 'delapouite/kakoune-registers'
 
-# kakoune-buffers
-# https://github.com/Delapouite/kakoune-buffers
-# ---------------------------------------------
-plug 'delapouite/kakoune-buffers' %{
-    #map global normal ^ q
-  #map global normal <a-^> Q
-
-  #map global normal q b
-  #map global normal Q B
-  #map global normal <a-q> <a-b>
-  #map global normal <a-Q> <a-B>
-  #map global normal b ': enter-buffers-mode<ret>' -docstring 'buffers'
-  #map global normal B ': enter-user-mode -lock buffers<ret>' -docstring 'buffers (lock)'
-}
+## kakoune-buffers
+## https://github.com/Delapouite/kakoune-buffers
+## ---------------------------------------------
+#plug 'delapouite/kakoune-buffers' %{
+#    #map global normal ^ q
+#  #map global normal <a-^> Q
+#
+#  #map global normal q b
+#  #map global normal Q B
+#  #map global normal <a-q> <a-b>
+#  #map global normal <a-Q> <a-B>
+#  #map global normal b ': enter-buffers-mode<ret>' -docstring 'buffers'
+#  #map global normal B ': enter-user-mode -lock buffers<ret>' -docstring 'buffers (lock)'
+#}
 
 # sudo write
 # https://github.com/occivink/kakoune-sudo-write
@@ -317,10 +370,14 @@ plug "lePerdu/kakboard" %{
 # Smarttab
 # https://github.com/andreyorst/smarttab.kak
 # ------------------------------------------
+plug 'andreyorst/tagbar.kak'
 # noexpandtab - use tab for everything. Tab will insert \t character, and
 # > will use \t character wd en indenting. Aligning cursors with & uses \t
 # character.
-#
+
+# TagBar
+# https://github.com/andreyorst/tagar.kak
+# ---------------------------------------`
 # expandtab - use space for everything. Tab will insert %opt{indentwidth}
 # amount of spaces, and > will indent with spaces.
 #
@@ -330,41 +387,61 @@ plug "lePerdu/kakboard" %{
 # Aligning cursors with & uses space.
 plug "andreyorst/smarttab.kak" defer smarttab %{
     expandtab
+    # global indentwidth and smarttab have already been set to 4
+
+    # when smarttab is loaded it will become compatible with these settings
     set-option global indentwidth 4
     # when `backspace' is pressed, 4 spaces are deleted at once
     set-option global softtabstop 4
+
 } config %{
     # these languages will use `expandtab' behavior
-    hook global WinSetOption filetype=(rust|markdown|kak|lisp|scheme|sh|perl) expandtab
+    hook global WinSetOption filetype=(fish|rust|markdown|kak|lisp|scheme|sh|perl) expandtab
     # these languages will use `noexpandtab' behavior
     hook global WinSetOption filetype=(makefile|gas) noexpandtab
     # these languages will use `smarttab' behavior
     hook global WinSetOption filetype=(c|cpp) smarttab
+
+    hook global WinSetOption filetype= %{
+        set-option buffer lintcmd 'fish --no-execute'
+	set-option window formatcmd 'fish_indent'
+    }
+    hook global WinSetOption filetype=(kaktree|kakrc%{
+        #add-highlighter buffer/numbers
+        #add-highlighter buffer/matching
+        #add-highlighter buffer/show-whitespaces
+        #add-highlighter buffer/wrap
+    }
 }
 
+# I don't know where to put thes, so lt's seee what happens''
+#add-highlighter global/numbers
+#add-highlighter global/matching
+#add-highlighter global/wrap
+#add-highlighter global/show-whitespaces
 
-# Status Lines
-# ============---------------------------------------------
-
-# Kakship (status line)
-# https://github.com/eburghar/kakship
-# -----------------------------------
-plug "eburghar/kakship" do %{
-    	cargo install --force --path . --root ~/.local
-    		[ ! -e $kak_config/starship.toml ] && cp starship.toml $kak_config/
-} config %{
-    	#kakship-enable
-}
-
-# Powerline.kak
-# https://github.com/andreyorst/powerline.kak
-# -------------------------------------------
-plug "andreyorst/powerline.kak" defer powerline_gruvbox %{
-        powerline-theme gruvbox
-} config %{
-        #powerline-start
-}
-
+## Status Lines
+## ============---------------------------------------------
+#
+## Kakship (status line)
+## https://github.com/eburghar/kakship
+## -----------------------------------
+#plug "eburghar/kakship" do %{
+#    	cargo install --force --path . --root ~/.local
+#    		[ ! -e $kak_config/starship.toml ] && cp starship.toml $kak_config/
+#} config %{
+#    	#kakship-enable
+#}
+#
+## Powerline.kak
+## https://github.com/andreyorst/powerline.kak
+## -------------------------------------------
+#plug "andreyorst/powerline.kak" defer powerline_gruvbox %{
+#        powerline-theme gruvbox
+#} config %{
+#        #powerline-start
+#}
+#
 
 # Colorschemes
 # ============---------------------------------------------
@@ -389,3 +466,43 @@ plug 'vbauerster/second-light' theme
 plug "evanrelf/primer.kak" theme config %{
     #colorscheme primer
 }
+
+# Kakoune Themes (with transparency)
+# https://github.com/anhsirk0/kakoune-themes
+# ------------------------------------------
+plug "anhsirk0/kakoune-themes" theme
+
+########### UNSORTED
+# https://github.com/caksoylar/kakoune-mysticaltutor
+plug 'caksoylar/kakoune-mysticaltutor' theme
+
+# https://github.com/TeddyDD/kakoune-selenizedplug
+plug 'TeddyDD/kakoune-selenized' theme
+#
+plug 'Jackojc/ultrasonic' theme
+#
+plug 'icantjuddle/ayu-kak' theme
+# https://github.com/Icantjuddle/ayu-kak
+#
+plug 'ftonneau/beryl.kak'
+# https://github.com/ftonneau/beryl.kak.git
+#
+plug 'gustavo-hms/garbo'
+# https://github.com/gustavo-hms/garbo
+#
+plug 'codymlewis/torchwood'
+# https://github.com/codymlewis/torchwood
+#
+plug 'caksoylar/kakoune-snow'
+# https://github.com/caksoylar/kakoune-snow
+#
+plug 'dracula/kakoune'
+# https://draculatheme.com/kakoune
+# https://github.com/dracula/kakoune
+#
+plug 'codymlewis/torchwood'
+# https://github.com/codymlewis/torchwood
+#
+plug 'Delapouite/kakoune-colors'
+# https://github.com/Delapouite/kakoune-colors
+# 
