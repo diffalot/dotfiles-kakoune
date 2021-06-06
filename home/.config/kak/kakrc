@@ -2,41 +2,35 @@
 ## https://github.com/mawww/kakoune/wiki
 ########################################
 #
-# TODO:
+# todo:
+# - change status bar BG to show modes
+#     - red, pink, orange for insert
+#     - blue or greeen for normal
+#     - control tmux status bar bg for more visual info
+# - rename tmux session to base name of current directory ?
+# - show current filename as editor window title in tmux status bar
+# - setup new tmux keymaps that compliment vi home row pane switching
 # - F10 Code Analysis
 #     - c => ctags
 #     - t => syntax tree
-# - F1 The Fucking Manuals (prompt or fall back to selection)
+# - F1 The Fucking Manuals
+#     - prompt for query or fall back to selectionq/
+#     - provide 'selection template string' 
 #     - :doc-search
 #     - man
 #     - google search
-#     - stash a bunch of crap and fzf it in narrower loops
-
+#     - stash a bunch of crap and fzf it in narrower loopsr
 
 # File format hooks are mainly set here, but will also be tabs in smarttab.kak
 # if they deviate from the global default of always expanding a four space base
 # tab size that is set in Smarttab
-
 #hook global WinSetOption filetype=fish {
 #    set-option lint
 #}
 
 
-## functions Before Mappings
-## (it was important for the line extension functions)
-## ===================================================
-
-#def -params 1 extend-line-down %{
-#  exec "<a-:>%arg{1}X"
-#}
-#def -params 1 extend-line-up %{
-#  exec "<a-:><a-;>%arg{1}K<a-;>"
-#  try %{
-#    exec -draft ';<a-K>\n<ret>'
-#    exec X
-#  }
-#  exec '<a-;><a-X>'
-#}
+## Functions Before Mappings (I think...)
+## ========================================================--------------------   
 
 #def -allow-override space-fn %{
 def space-fn %{
@@ -45,7 +39,6 @@ def space-fn %{
     	keys=()
         cmds=()
         infos=()
-        echo $SHELL
         IFS=,
         while IFS=, read key cmd info; do
         	keys+=($key)
@@ -58,6 +51,7 @@ def space-fn %{
             printf -v line "%s:    %s\n" "${keys[i]}" "${infos[i]}"
             infopopup+=$line
         done
+        echo $SHELL
         echo "info \"$infopopup\""
 
 	onkey='on-key %{%sh{ case $kak_key in'
@@ -73,15 +67,21 @@ def space-fn %{
 # Mappings
 #=========
 
-# space is my leader
+# <space> is my leader
 map global normal <space> , -docstring 'leader'
-map global normal <backspace> <space> -docstring 'remove all sels except main'
-map global normal <a-backspace> <a-space> -docstring 'remove main sel'
+map global normal <backspace> <space> -docstring 'back to one selection'
+map global normal <a-backspace> <a-space> -docstring 'remove each selection'
 
 # Modes and Menus
 map global user l %{: enter-user-mode lsp<ret>} -docstring "Language Server Mode"
 map global user f %{: fzf-mode<ret>} -docstring "Fuzzy Finder Mode"
 map global user t %{: kaktree-toggle<ret>} -docstring "KakTree Toggle On/Off"
+
+    # Code Analysis
+map global user o ':cscope ' -docstring 'Find tag with cscope'
+
+# Code Collaboration
+map global user <F7> ': git status -bs<ret>' -docstring 'git status'
 
 # New Panes TODO: allow them to take arguments and override defaults
 map global user V %{: tmux-terminal-vertical kak -c %val{session} <space><ret> } -docstring "New Kakoune Below"
@@ -89,26 +89,81 @@ map global user > %{: tmux-terminal-horizontal kak -c %val{session} <space><ret>
 map global user v %{: tmux-terminal-vertical fish<ret> } -docstring "New Terminal Below"
 map global user . %{: tmux-terminal-horizontal fish<ret> } -docstring "New Terminal to Right"
 
-# Open  Journal
-map -docstring "Open Journal (wiki)" global user w %{ :tmux-terminal-horizontal kak -c %val{session} $HOME/cronofiles/journal/index.md <space><ret> }
+# Open  Wiki
+map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E ': wiki docs/index.md' <space><ret> }
+map -docstring "Open Journal" global user w %{: tmux-terminal-horizontal kak -c %val{session} -E ': wiki journal/index.md' <space><ret> }
 
 # kak administration
-map -docstring "edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
-map -docstring "source ~/.config/kak/kakrc" global user r ":source ~/.config/kak/kakrc<ret>"
+map -docstring "Edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
+map -docstring "Source ~/.config/kak/kakrc" global user r ":source ~/.config/kak/kakrc<ret>"
 
-# par formatting
-map -docstring "wrap selection to 79 character wide" global user p '|par 79<ret>'
+# Editing
 
-map global user m -docstring "Show space help" :space-fn<ret>
+map -docstring "Wrap selection with par w79p2fr" global user p '|par w79p2fr<ret>'
 
-#map global normal X ':extend-line-down %val{count}<ret>'
-#map global normal x ':extend-line-up %val{count}<ret>'
+# this and the whole space-fn are probably not needed, but I'm keeping them
+# until I figure out how to run bash, dash, or zsh as Kakoune's shell
+map global user <c-space> -docstring "Show space help" :space-fn<ret>
 
-# General Editing Settings
+#def -params 1 extend-line-down %{
+#  exec "<a-:>%arg{1}X"
+#}
+#def -params 1 extend-line-up %{
+#  exec "<a-:><a-;>%arg{1}K<a-;>"
+#  try %{
+#    exec -draft ';<a-K>\n<ret>'
+#    exec X
+#  }
+#  exec '<a-;><a->
+#
+#  #map global normal X ':extend-line-down %val{count}<retn  
+#map global normal x ':extend-line-up %val{count}<retn  
+
+
+# General Editing Settings  
 # ========================
 
-set-option global scrolloff 2,2
+colorscheme second-light
 
+set-option global scrolloff 3,7
+
+# Default Highlights
+# ==================
+
+add-highlighter global/ show-matching
+#add-highlighter global/ show-whitespaces
+add-highlighter global/ dynregex '%reg{/}' 0:+u
+hook global WinCreate ^[^*]+$ %{
+    add-highlighter window/ number-lines -hlcursor
+    beryl-add-`band 80 1
+    beryl-vivify-cursor
+    beryl-enable-changing-cursor
+
+    set-face global Comment+i
+}
+
+
+# Change cursor color in insert mode:
+hook global ModeChange insert:.* %{
+    #set-face global StatusLine      cyan,default
+}
+hook global ModeChange .*:insert %{
+    #set-face global StatusLine      rgb:696969,rgb:f0e68c
+}
+
+# Highlight the word under the cursor
+declare-option -hidden regex curword
+set-face global CurWord default,rgb:999999
+set-face global CurWord rgb:442233,rgb:fda134+b
+hook global NormalIdle .* %{
+    eval -draft %{ try %{
+        exec <space><a-i>w <a-k>\A\w+\z<ret>
+        set-option buffer curword "\b\Q%val{selection}\E\b"
+    } catch %{
+        set-option buffer curword ''
+    } }
+}
+add-highlighter global/ dynregex '%opt{curword}' 0:CurWord
 
 # Plugins
 # =======
@@ -296,7 +351,6 @@ wiki-setup %sh{ echo $HOME/cronofiles }
 # https://github.com/chambln/kakoune-kit
 # --------------------------------------
 plug 'chambln/kakoune-kit' config %{
-    map global user <f7> ': git status -bs<ret>' -docstring 'git status'
     hook global WinSetOption filetype=git-status %{
         map window normal c ': git commit --verbose '
         map window normal l ': git log --oneline --graph<ret>'
@@ -367,17 +421,27 @@ plug "lePerdu/kakboard" %{
     hook global WinCreate .* %{ kakboard-enable } 
 }
 
+# TagBar
+# https://github.com/andreyorst/tagar.kak
+# ---------------------------------------`
+plug 'andreyorst/tagbar.kak'
+
+# C-Scope
+# https://github.com/yveoch/kakoune-cscope
+# ----------------------------------------
+# Build an index: :cscope-index
+# Make a lookup: :cscope
+# Fuzzy-find a function: :cscope-find
+# Optional mapping: `map -docstring 'cscope menu' global user 'c' 'w:cscope-menu'
+plug 'yveoch/kakoune-cscope'
+
 # Smarttab
 # https://github.com/andreyorst/smarttab.kak
 # ------------------------------------------
-plug 'andreyorst/tagbar.kak'
 # noexpandtab - use tab for everything. Tab will insert \t character, and
 # > will use \t character wd en indenting. Aligning cursors with & uses \t
 # character.
 
-# TagBar
-# https://github.com/andreyorst/tagar.kak
-# ---------------------------------------`
 # expandtab - use space for everything. Tab will insert %opt{indentwidth}
 # amount of spaces, and > will indent with spaces.
 #
@@ -450,13 +514,13 @@ plug "andreyorst/smarttab.kak" defer smarttab %{
 # https://github.com/raiguard/one.kak
 # -----------------------------------
 plug "raiguard/one.kak" theme config %{
-    colorscheme one-light
+    #colorscheme one-light
 }
 # base16 Gruvbox
 # https://github.com/andreyorst/base16-gruvbox.kak
 # ------------------------------------------------
 plug "andreyorst/base16-gruvbox.kak" theme config %{
-    colorscheme base16-gruvbox-dark-soft # or any other variant
+    #colorscheme base16-gruvbox-dark-soft # or any other variant
 }
             
 # Second Light 
@@ -466,6 +530,8 @@ plug 'vbauerster/second-light' theme
 plug "evanrelf/primer.kak" theme config %{
     #colorscheme primer
 }
+
+# INSTALL UNVERIFIED
 
 # Kakoune Themes (with transparency)
 # https://github.com/anhsirk0/kakoune-themes
@@ -484,25 +550,22 @@ plug 'Jackojc/ultrasonic' theme
 plug 'icantjuddle/ayu-kak' theme
 # https://github.com/Icantjuddle/ayu-kak
 #
-plug 'ftonneau/beryl.kak'
+plug 'ftonneau/beryl.kak' theme
 # https://github.com/ftonneau/beryl.kak.git
 #
-plug 'gustavo-hms/garbo'
+plug 'gustavo-hms/garbo' theme
 # https://github.com/gustavo-hms/garbo
 #
-plug 'codymlewis/torchwood'
+plug 'codymlewis/torchwood' theme
 # https://github.com/codymlewis/torchwood
 #
-plug 'caksoylar/kakoune-snow'
+plug 'caksoylar/kakoune-snow' theme
 # https://github.com/caksoylar/kakoune-snow
 #
-plug 'dracula/kakoune'
+plug 'dracula/kakoune' theme
 # https://draculatheme.com/kakoune
 # https://github.com/dracula/kakoune
 #
-plug 'codymlewis/torchwood'
-# https://github.com/codymlewis/torchwood
-#
-plug 'Delapouite/kakoune-colors'
+plug 'Delapouite/kakoune-colors' theme
 # https://github.com/Delapouite/kakoune-colors
 # 
