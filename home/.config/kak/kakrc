@@ -33,6 +33,7 @@
 ## Functions Before Mappings (I think...)
 ## ========================================================--------------------   
 
+# TODO: What shell are we in?
 #def -allow-override space-fn %{
 def space-fn %{
     %sh{
@@ -80,29 +81,32 @@ map global user t %{: kaktree-toggle<ret>} -docstring "KakTree Toggle On/Off"
 
 map -docstring "Wrap selection with par w79p2fr" global user p '|par w79p2fr<ret>'
 
-    # Code Analysis
+# Code Analysis
 map global user o ':cscope ' -docstring 'Find tag with cscope'
 
 # Code Collaboration
 map global user <F7> ': git status -bs<ret>' -docstring 'git status'
+
+# Wiki
+# FIX: Why aren't these working, where are the logs?
+map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki docs/index.md'<ret> }
+map -docstring "Open Journal" global user j %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki journal/index.md' 1<ret> }
+
+# Editing
+map -docstring 'Toggle line numbers' global user 1 ': toggle-highlighter global/ number-lines<ret>'
+map -docstring 'Toggle line wrap' global user 2 ': toggle-highlighter global/ wrap -word<ret>'
+map -docstring 'Toggle current word highlight' global user 3 ': toggle-highlighter global/ CurWord<ret>'
+map -docstring 'Toggle show whitespaces' global user 4 ': toggle-highlighter global/ show-whitespaces<ret>'
+
+# kak administration
+map -docstring "Edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
+map -docstring "Source ~/.config/kak/kakrc" global user r ":source ~/.config/kak/kakrc<ret>"
 
 # New Panes TODO: allow them to take arguments and override defaults
 map global user V %{: tmux-terminal-vertical kak -c %val{session} <space><ret> } -docstring "New Kakoune Below"
 map global user > %{: tmux-terminal-horizontal kak -c %val{session} <space><ret> } -docstring "New Kakoune to Right"
 map global user v %{: tmux-terminal-vertical fish<ret> } -docstring "New Terminal Below"
 map global user . %{: tmux-terminal-horizontal fish<ret> } -docstring "New Terminal to Right"
-
-# Open  Wiki
-map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki docs/index.md' <space><ret> }
-map -docstring "Open Journal" global user j %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki journal/index.md' <space><ret> }
-
-# kak administration
-map -docstring "Edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
-map -docstring "Source ~/.config/kak/kakrc" global user r ":source ~/.config/kak/kakrc<ret>"
-
-# Editing
-
-map -docstring "Wrap selection with par w79p2fr" global user p '|par w79p2fr<ret>'
 
 # this and the whole space-fn are probably not needed, but I'm keeping them
 # until I figure out how to run bash, dash, or zsh as Kakoune's shell
@@ -128,8 +132,9 @@ map global user <c-space> -docstring "Show space help" :space-fn<ret>
 
 #colorscheme second-light
 colorscheme one-darker
+colorscheme garbo
 
-set-option global scrolloff 3,7
+set-option global scrolloff 2,2
 
 # Default Highlights
 # ==================
@@ -187,7 +192,7 @@ hook global NormalIdle .* %{
 # Info: \INFO  \NOTE:  
 # Warn: \TODO \TODO: \todo( \Todo: \ToDo:
 # Error: \LOL \FIX \XXX!
-set-face global TooDooYay 	rgb:80ff80,          +bF
+set-face global TooDooYay 	rgb:80ff80+bF
 set-face global TooDooInfo 	rgb:0f0f0f,rgb:00ffff+bF
 set-face global TooDooWarn 	rgb:0f0f0f,rgb:fda134+bF
 set-face global TooDooError 	rgb:0f0f0f,rgb:b05050+bF
@@ -245,6 +250,7 @@ plug "ul/kak-lsp" do %{
     define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
 
     define-command lsp-restart -docstring 'restart lsp server' %{ lsp-stop; lsp-start }
+    
     hook global WinSetOption filetype=(c|cpp|cc|rust|javascript|typescript) %{
         set-option window lsp_auto_highlight_references true
         set-option window lsp_hover_anchor false
@@ -305,45 +311,59 @@ hook global WinSetOption filetype=rust %{
 # kak-lsp supports showing diagnostics inline after their respective line, but
 # this behaviour can be somewhat buggy and must be enabled explicitly:
 # lsp-inlay-diagnostics-enable global
-
+#
 # Snippets
-# https://github.com/kak-lsp/kak-lsp#snippets
-def -hidden insert-c-n %{
-     try %{
-            lsp-snippets-select-next-placeholders
-               exec '<a-;>d'
-     } catch %{
-            exec -with-hooks '<c-n>'
-     }
-}
-map global insert <c-n> "<a-;>: insert-c-n<ret>"
+## https://github.com/kak-lsp/kak-lsp#snippets
+#def -hidden insert-c-n %{
+#     try %{
+#            lsp-snippets-select-next-placeholders
+#               exec '<a-;>d'
+#     } catch %{
+#            exec -with-hooks '<c-n>'
+#     }
+#}
+#map global insert <c-n> "<a-;>: insert-c-n<ret>"
 
 ## Language Helpers
 ###################========================================--------------------
 
-# JavaScript TypeScript
-# https://github.com/schemar/kak-jsts
-# -----------------------------------
-# npm i -g eslint-formatter-kakoune
-# brew install jq
-# -----------------------------------
-plug "schemar/kak-jsts" config %{
-    hook global WinSetOption filetype=(javascript|typescript) %{
-        map window user l -docstring 'lint' ': lint<ret>'
-        map window user f -docstring 'format' ': format-eslint<ret>'
-        
-        # If you want to format before every write, you could do s.th. like this:
-        hook window BufWritePre .* %{
-            evaluate-commands -no-hooks %{
-                format-eslint
-            }
-        }
-    }
-}
+## JavaScript TypeScript
+## https://github.com/schemar/kak-jsts
+## -----------------------------------
+## npm i -g eslint-formatter-kakoune
+## brew install jq
+## -----------------------------------
+#plug "schemar/kak-jsts" config %{
+#    hook global WinSetOption filetype=(javascript|typescript) %{
+#        map window user l -docstring 'lint' ': lint<ret>'
+#        map window user f -docstring 'format' ': format-eslint<ret>'
+#        
+#        # If you want to format before every write, you could do s.th. like this:
+#        hook window BufWritePre .* %{
+#            evaluate-commands -no-hooks %{
+#                format-eslint
+#            }
+#        }
+#    }
+#}
 
 
 # User Experience
 # ###############==============================================================
+
+plug "https://gitlab.com/Screwtapello/kakoune-state-save.git"
+
+hook global KakBegin .* %{
+    state-save-reg-load colon
+    state-save-reg-load pipe
+    state-save-reg-load slash
+}
+
+hook global KakEnd .* %{
+    state-save-reg-save colon
+    state-save-reg-save pipe
+    state-save-reg-save slash
+}
 
 # New Features
 # ============---------------------------------------------
@@ -373,7 +393,7 @@ plug "andreyorst/kaktree" config %{
 # SideTree
 # https://github.com/topisani/sidetree
 # ------------------------------------
-plug 'topisani/sidetree'
+#plug 'topisani/sidetree'
 
 # Kakoune Wiki
 # https://github.com/TeddyDD/kakoune-wiki
@@ -381,29 +401,29 @@ plug 'topisani/sidetree'
 plug 'TeddyDD/kakoune-wiki'
 wiki-setup %sh{ echo $HOME/cronofiles }
 
-# Git Porcelain
-# https://github.com/chambln/kakoune-kit
-# --------------------------------------
-plug 'chambln/kakoune-kit' config %{
-    hook global WinSetOption filetype=git-status %{
-        map window normal c ': git commit --verbose '
-        map window normal l ': git log --oneline --graph<ret>'
-        map window normal d ': -- %val{selections}<a-!><home> git diff '
-        map window normal D ': -- %val{selections}<a-!><home> git diff --cached '
-        map window normal a ': -- %val{selections}<a-!><home> git add '
-        map window normal A ': -- %val{selections}<a-!><home> repl git add -p '
-        map window normal r ': -- %val{selections}<a-!><home> git reset '
-        map window normal R ': -- %val{selections}<a-!><home> repl git reset -p '
-        map window normal o ': -- %val{selections}<a-!><home> git checkout '
-    }
-    hook global WinSetOption filetype=git-log %{
-        map window normal d     ': %val{selections}<a-!><home> git diff '
-        map window normal <ret> ': %val{selections}<a-!><home> git show '
-        map window normal r     ': %val{selections}<a-!><home> git reset '
-        map window normal R     ': %val{selections}<a-!><home> repl git reset -p '
-        map window normal o     ': %val{selections}<a-!><home> git checkout '
-    }
-}
+## Git Porcelain
+## https://github.com/chambln/kakoune-kit
+## --------------------------------------
+#plug 'chambln/kakoune-kit' config %{
+#    hook global WinSetOption filetype=git-status %{
+#        map window normal c ': git commit --verbose '
+#        map window normal l ': git log --oneline --graph<ret>'
+#        map window normal d ': -- %val{selections}<a-!><home> git diff '
+#        map window normal D ': -- %val{selections}<a-!><home> git diff --cached '
+#        map window normal a ': -- %val{selections}<a-!><home> git add '
+#        map window normal A ': -- %val{selections}<a-!><home> repl git add -p '
+#        map window normal r ': -- %val{selections}<a-!><home> git reset '
+#        map window normal R ': -- %val{selections}<a-!><home> repl git reset -p '
+#        map window normal o ': -- %val{selections}<a-!><home> git checkout '
+#    }
+#    hook global WinSetOption filetype=git-log %{
+#        map window normal d     ': %val{selections}<a-!><home> git diff '
+#        map window normal <ret> ': %val{selections}<a-!><home> git show '
+#        map window normal r     ': %val{selections}<a-!><home> git reset '
+#        map window normal R     ': %val{selections}<a-!><home> repl git reset -p '
+#        map window normal o     ': %val{selections}<a-!><home> git checkout '
+#    }
+#}
 
 # Kak ANSI
 # https://github.com/eraserhd/kak-ansi
@@ -420,13 +440,13 @@ plug 'andreyorst/fzf.kak'
 # Palette.kak
 # https://github.com/alexherbo2/palette.kak
 # -----------------------------------------
-plug "alexherbo2/palette.kak"
+plug "alexherbo2/palette.kak" defer
 
 # TODO: Setup with a user mode shortcut
 # kakoune-registers
 # https://github.com/Delapouite/kakoune-registers
 # -----------------------------------------------
-plug 'delapouite/kakoune-registers'
+plug 'delapouite/kakoune-registers' defer
 
 ## kakoune-buffers
 ## https://github.com/Delapouite/kakoune-buffers
@@ -445,26 +465,26 @@ plug 'delapouite/kakoune-registers'
 
 # Toggle Highlighter
 # https://github.com/alexherbo2/toggle-highlighter.kak
-plug 'alexherbo2/toggle-highlighter.kak'
+plug 'alexherbo2/toggle-highlighter.kak' 
 # map -docstring 'Toggle line numbers' global user l ': toggle-highlighter global/number-lines number-lines<ret>'
 # map -docstring 'Toggle line wrap' global user w ': toggle-highlighter global/wrap wrap -word<ret>'
 
 # sudo write
 # https://github.com/occivink/kakoune-sudo-write
 # ----------------------------------------------
-plug 'occivink/kakoune-sudo-write'
+plug 'occivink/kakoune-sudo-write' defer
 
 # kakboard
 # https://github.com/lePerdu/kakboard
 # -----------------------------------
-plug "lePerdu/kakboard" %{
+plug "lePerdu/kakboard" defer config %{
     hook global WinCreate .* %{ kakboard-enable } 
 }
 
 # TagBar
 # https://github.com/andreyorst/tagar.kak
 # ---------------------------------------`
-plug 'andreyorst/tagbar.kak'
+plug 'andreyorst/tagbar.kak' defer
 
 # C-Scope
 # https://github.com/yveoch/kakoune-cscope
@@ -473,7 +493,7 @@ plug 'andreyorst/tagbar.kak'
 # Make a lookup: :cscope
 # Fuzzy-find a function: :cscope-find
 # Optional mapping: `map -docstring 'cscope menu' global user 'c' 'w:cscope-menu'
-plug 'yveoch/kakoune-cscope'
+plug 'yveoch/kakoune-cscope' defer
 
 # Smarttab
 # https://github.com/andreyorst/smarttab.kak
@@ -489,7 +509,7 @@ plug 'yveoch/kakoune-cscope'
 # if your cursor is inside indentation area, e.g. before any non-whitespace
 # character, and insert spaces if cursor is after any non-whitespace character.
 # Aligning cursors with & uses space.
-plug "andreyorst/smarttab.kak" defer smarttab %{
+plug "andreyorst/smarttab.kak" smarttab %{
     expandtab
     # global indentwidth and smarttab have already been set to 4
 
@@ -508,7 +528,7 @@ plug "andreyorst/smarttab.kak" defer smarttab %{
 
     hook global WinSetOption filetype= %{
         set-option buffer lintcmd 'fish --no-execute'
-	set-option window formatcmd 'fish_indent'
+	set-option window formatcmd 'fish_indent --write'
     }
     hook global WinSetOption filetype=(kaktree|kakrc%{
         #add-highlighter buffer/numbers
@@ -608,4 +628,4 @@ plug 'dracula/kakoune' theme
 #
 plug 'Delapouite/kakoune-colors' theme
 # https://github.com/Delapouite/kakoune-colors
-# 
+
