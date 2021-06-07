@@ -168,6 +168,37 @@ hook global NormalIdle .* %{
 }
 #add-highlighter global/ dynregex '%opt{curword}' 0:CurWord
 
+# Highlight TooDoos
+# =================
+# 
+# FIX: Todos shouldn't be highlighted in code but only in comments.
+# TODO: Figure out Why the \FIX on the error line does not highlight when next
+# to a space that is part of another's highlight. It _shouldn't_ be a problem
+# in practice because these _shouldn't_ be that close together.
+# 
+# INFO: The rest of these are here as examples :)
+# 
+# \INFO We don't hightlit todo in a wOw sentence, YAY unless it's a \TODO in
+# all caps. Ususally we want a lowercase todo with punctuation after it to
+# be highlighted, W\ARN: but not when we end a sentence with todo.
+#
+# Examples:
+# Yay: wow  yes  No need to turn these off all the time, IMHO
+# Info: \INFO  \NOTE:  
+# Warn: \TODO \TODO: \todo( \Todo: \ToDo:
+# Error: \LOL \FIX \XXX!
+set-face global TooDooYay 	rgb:80ff80,          +bF
+set-face global TooDooInfo 	rgb:0f0f0f,rgb:00ffff+bF
+set-face global TooDooWarn 	rgb:0f0f0f,rgb:fda134+bF
+set-face global TooDooError 	rgb:0f0f0f,rgb:b05050+bF
+
+add-highlighter global/TooDoos  group -passes colorize
+add-highlighter global/TooDoos/ regex ((?i)\h(yay|wow|yes).)        1:TooDooYay
+add-highlighter global/TooDoos/ regex (\h(INFO|NOTE).) 	            1:TooDooInfo
+add-highlighter global/TooDoos/ regex (\h(TODO|WARN).) 	            1:TooDooWarn
+add-highlighter global/TooDoos/ regex (?i)((@|\h)ToDo[:|\(])        1:TooDooWarn
+add-highlighter global/TooDoos/ regex (\h(LOL|FIX|FIXME|[X]{3,}).)  1:TooDooError
+
 # Plugins
 # =======
 
