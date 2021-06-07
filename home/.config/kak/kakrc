@@ -19,7 +19,8 @@
 #     - :doc-search
 #     - man
 #     - google search
-#     - stash a bunch of crap and fzf it in narrower loopsr
+#     - stash a bunch of crap and fzf it in narrower loops
+# - 
 
 # File format hooks are mainly set here, but will also be tabs in smarttab.kak
 # if they deviate from the global default of always expanding a four space base
@@ -40,6 +41,7 @@ def space-fn %{
         cmds=()
         infos=()
         IFS=,
+        echo $SHELL
         while IFS=, read key cmd info; do
         	keys+=($key)
                 cmds+=($cmd)
@@ -51,7 +53,6 @@ def space-fn %{
             printf -v line "%s:    %s\n" "${keys[i]}" "${infos[i]}"
             infopopup+=$line
         done
-        echo $SHELL
         echo "info \"$infopopup\""
 
 	onkey='on-key %{%sh{ case $kak_key in'
@@ -77,6 +78,8 @@ map global user l %{: enter-user-mode lsp<ret>} -docstring "Language Server Mode
 map global user f %{: fzf-mode<ret>} -docstring "Fuzzy Finder Mode"
 map global user t %{: kaktree-toggle<ret>} -docstring "KakTree Toggle On/Off"
 
+map -docstring "Wrap selection with par w79p2fr" global user p '|par w79p2fr<ret>'
+
     # Code Analysis
 map global user o ':cscope ' -docstring 'Find tag with cscope'
 
@@ -90,8 +93,8 @@ map global user v %{: tmux-terminal-vertical fish<ret> } -docstring "New Termina
 map global user . %{: tmux-terminal-horizontal fish<ret> } -docstring "New Terminal to Right"
 
 # Open  Wiki
-map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E ': wiki docs/index.md' <space><ret> }
-map -docstring "Open Journal" global user w %{: tmux-terminal-horizontal kak -c %val{session} -E ': wiki journal/index.md' <space><ret> }
+map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki docs/index.md' <space><ret> }
+map -docstring "Open Journal" global user j %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki journal/index.md' <space><ret> }
 
 # kak administration
 map -docstring "Edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
@@ -123,7 +126,8 @@ map global user <c-space> -docstring "Show space help" :space-fn<ret>
 # General Editing Settings  
 # ========================
 
-colorscheme second-light
+#colorscheme second-light
+colorscheme one-darker
 
 set-option global scrolloff 3,7
 
@@ -135,11 +139,11 @@ add-highlighter global/ show-matching
 add-highlighter global/ dynregex '%reg{/}' 0:+u
 hook global WinCreate ^[^*]+$ %{
     add-highlighter window/ number-lines -hlcursor
-    beryl-add-`band 80 1
+    beryl-add-band 80 1
     beryl-vivify-cursor
     beryl-enable-changing-cursor
 
-    set-face global Comment+i
+    #:set-face global Comment+i
 }
 
 
@@ -153,8 +157,7 @@ hook global ModeChange .*:insert %{
 
 # Highlight the word under the cursor
 declare-option -hidden regex curword
-set-face global CurWord default,rgb:999999
-set-face global CurWord rgb:442233,rgb:fda134+b
+set-face global CurWord rgb:442233,rgb:fda134
 hook global NormalIdle .* %{
     eval -draft %{ try %{
         exec <space><a-i>w <a-k>\A\w+\z<ret>
@@ -163,7 +166,7 @@ hook global NormalIdle .* %{
         set-option buffer curword ''
     } }
 }
-add-highlighter global/ dynregex '%opt{curword}' 0:CurWord
+#add-highlighter global/ dynregex '%opt{curword}' 0:CurWord
 
 # Plugins
 # =======
@@ -408,6 +411,12 @@ plug 'delapouite/kakoune-registers'
 #  #map global normal b ': enter-buffers-mode<ret>' -docstring 'buffers'
 #  #map global normal B ': enter-user-mode -lock buffers<ret>' -docstring 'buffers (lock)'
 #}
+
+# Toggle Highlighter
+# https://github.com/alexherbo2/toggle-highlighter.kak
+plug 'alexherbo2/toggle-highlighter.kak'
+# map -docstring 'Toggle line numbers' global user l ': toggle-highlighter global/number-lines number-lines<ret>'
+# map -docstring 'Toggle line wrap' global user w ': toggle-highlighter global/wrap wrap -word<ret>'
 
 # sudo write
 # https://github.com/occivink/kakoune-sudo-write
