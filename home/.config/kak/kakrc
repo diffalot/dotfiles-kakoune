@@ -2,7 +2,7 @@
 ## https://github.com/mawww/kakoune/wiki
 ########################################
 #
-# todo:
+# todo: what does my overall editing experience need right now?
 # - change status bar BG to show modes
 #     - red, pink, orange for insert
 #     - blue or greeen for normal
@@ -22,190 +22,9 @@
 #     - stash a bunch of crap and fzf it in narrower loops
 # - 
 
-# File format hooks are mainly set here, but will also be tabs in smarttab.kak
-# if they deviate from the global default of always expanding a four space base
-# tab size that is set in Smarttab
-#hook global WinSetOption filetype=fish {
-#    set-option lint
-#}
 
-
-## Functions Before Mappings (I think...)
-## ========================================================--------------------   
-
-# TODO: What shell are we in?
-#def -allow-override space-fn %{
-def space-fn %{
-    %sh{
-    	categories=()
-    	keys=()
-        cmds=()
-        infos=()
-        IFS=,
-        echo $SHELL
-        while IFS=, read key cmd info; do
-        	keys+=($key)
-                cmds+=($cmd)
-                infos+=($info)
-        done < ~/.config/kak/spacefun.csv
-
-	infopopup=""
-        for ((i=0;i<${#keys[@]};++i)); do
-            printf -v line "%s:    %s\n" "${keys[i]}" "${infos[i]}"
-            infopopup+=$line
-        done
-        echo "info \"$infopopup\""
-
-	onkey='on-key %{%sh{ case $kak_key in'
-        for ((i=0;i<${#keys[@]};++i)); do
-            printf -v line "(%s) %s ;;" "${keys[i]}" "${cmds[i]}"
-            onkey+=$line
-        done
-        onkey+='esac}}'
-        echo "$onkey"
-    }
-}
-
-# Mappings
-#=========
-
-# <space> is my leader
-map global normal <space> , -docstring 'leader'
-map global normal <backspace> <space> -docstring 'back to one selection'
-map global normal <a-backspace> <a-space> -docstring 'remove each selection'
-
-# Modes and Menus
-map global user l %{: enter-user-mode lsp<ret>} -docstring "Language Server Mode"
-map global user f %{: fzf-mode<ret>} -docstring "Fuzzy Finder Mode"
-map global user t %{: kaktree-toggle<ret>} -docstring "KakTree Toggle On/Off"
-
-map -docstring "Wrap selection with par w79p2fr" global user p '|par w79p2fr<ret>'
-
-# Code Analysis
-map global user o ':cscope ' -docstring 'Find tag with cscope'
-
-# Code Collaboration
-map global user <F7> ': git status -bs<ret>' -docstring 'git status'
-
-# Wiki
-# FIX: Why aren't these working, where are the logs?
-map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki docs/index.md'<ret> }
-map -docstring "Open Journal" global user j %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki journal/index.md' 1<ret> }
-
-# Editing
-map -docstring 'Toggle line numbers' global user 1 ': toggle-highlighter global/ number-lines<ret>'
-map -docstring 'Toggle line wrap' global user 2 ': toggle-highlighter global/ wrap -word<ret>'
-map -docstring 'Toggle current word highlight' global user 3 ': toggle-highlighter global/ CurWord<ret>'
-map -docstring 'Toggle show whitespaces' global user 4 ': toggle-highlighter global/ show-whitespaces<ret>'
-
-# kak administration
-map -docstring "Edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
-map -docstring "Source ~/.config/kak/kakrc" global user r ":source ~/.config/kak/kakrc<ret>"
-
-# New Panes TODO: allow them to take arguments and override defaults
-map global user V %{: tmux-terminal-vertical kak -c %val{session} <space><ret> } -docstring "New Kakoune Below"
-map global user > %{: tmux-terminal-horizontal kak -c %val{session} <space><ret> } -docstring "New Kakoune to Right"
-map global user v %{: tmux-terminal-vertical fish<ret> } -docstring "New Terminal Below"
-map global user . %{: tmux-terminal-horizontal fish<ret> } -docstring "New Terminal to Right"
-
-# this and the whole space-fn are probably not needed, but I'm keeping them
-# until I figure out how to run bash, dash, or zsh as Kakoune's shell
-map global user <c-space> -docstring "Show space help" :space-fn<ret>
-
-#def -params 1 extend-line-down %{
-#  exec "<a-:>%arg{1}X"
-#}
-#def -params 1 extend-line-up %{
-#  exec "<a-:><a-;>%arg{1}K<a-;>"
-#  try %{
-#    exec -draft ';<a-K>\n<ret>'
-#    exec X
-#  }
-#  exec '<a-;><a->
-#
-#  #map global normal X ':extend-line-down %val{count}<retn  
-#map global normal x ':extend-line-up %val{count}<retn  
-
-
-# General Editing Settings  
-# ========================
-
-#colorscheme second-light
-colorscheme one-darker
-colorscheme garbo
-
-set-option global scrolloff 2,2
-
-# Default Highlights
-# ==================
-
-add-highlighter global/ show-matching
-#add-highlighter global/ show-whitespaces
-add-highlighter global/ dynregex '%reg{/}' 0:+u
-hook global WinCreate ^[^*]+$ %{
-    add-highlighter window/ number-lines -hlcursor
-    beryl-add-band 80 1
-    beryl-vivify-cursor
-    beryl-enable-changing-cursor
-
-    #:set-face global Comment+i
-}
-
-
-# Change cursor color in insert mode:
-hook global ModeChange insert:.* %{
-    #set-face global StatusLine      cyan,default
-}
-hook global ModeChange .*:insert %{
-    #set-face global StatusLine      rgb:696969,rgb:f0e68c
-}
-
-# Highlight the word under the cursor
-declare-option -hidden regex curword
-set-face global CurWord rgb:442233,rgb:fda134
-hook global NormalIdle .* %{
-    eval -draft %{ try %{
-        exec <space><a-i>w <a-k>\A\w+\z<ret>
-        set-option buffer curword "\b\Q%val{selection}\E\b"
-    } catch %{
-        set-option buffer curword ''
-    } }
-}
-#add-highlighter global/ dynregex '%opt{curword}' 0:CurWord
-
-# Highlight TooDoos
-# =================
-# 
-# FIX: Todos shouldn't be highlighted in code but only in comments.
-# TODO: Figure out Why the \FIX on the error line does not highlight when next
-# to a space that is part of another's highlight. It _shouldn't_ be a problem
-# in practice because these _shouldn't_ be that close together.
-# 
-# INFO: The rest of these are here as examples :)
-# 
-# \INFO We don't hightlit todo in a wOw sentence, YAY unless it's a \TODO in
-# all caps. Ususally we want a lowercase todo with punctuation after it to
-# be highlighted, W\ARN: but not when we end a sentence with todo.
-#
-# Examples:
-# Yay: wow  yes  No need to turn these off all the time, IMHO
-# Info: \INFO  \NOTE:  
-# Warn: \TODO \TODO: \todo( \Todo: \ToDo:
-# Error: \LOL \FIX \XXX!
-set-face global TooDooYay 	rgb:80ff80+bF
-set-face global TooDooInfo 	rgb:0f0f0f,rgb:00ffff+bF
-set-face global TooDooWarn 	rgb:0f0f0f,rgb:fda134+bF
-set-face global TooDooError 	rgb:0f0f0f,rgb:b05050+bF
-
-add-highlighter global/TooDoos  group -passes colorize
-add-highlighter global/TooDoos/ regex ((?i)\h(yay|wow|yes).)        1:TooDooYay
-add-highlighter global/TooDoos/ regex (\h(INFO|NOTE).) 	            1:TooDooInfo
-add-highlighter global/TooDoos/ regex (\h(TODO|WARN).) 	            1:TooDooWarn
-add-highlighter global/TooDoos/ regex (?i)((@|\h)ToDo[:|\(])        1:TooDooWarn
-add-highlighter global/TooDoos/ regex (\h(LOL|FIX|FIXME|[X]{3,}).)  1:TooDooError
-
-# Plugins
-# =======
+# Plugin Setup
+# #####################################=======================-----------------
 
 # plug
 # https://github.com/andreyorst/plug.kak
@@ -218,6 +37,18 @@ evaluate-commands %sh{
     printf "%s\n" "source '$plugins/plug.kak/rc/plug.kak'"
 }
 plug "andreyorst/plug.kak" noload
+
+# Prelude for security
+# https://github.com/alexherbo2/prelude.kak
+# -----------------------------------------
+plug 'alexherbo2/prelude.kak'
+
+# end plugin setup
+# -----------------------------------------------------------------------------
+
+
+# Language Server Settings
+# #####################################=======================-----------------
 
 # Language Server Protocol
 # https://github.com/kak-lsp/kak-lsp
@@ -324,15 +155,18 @@ hook global WinSetOption filetype=rust %{
 #}
 #map global insert <c-n> "<a-;>: insert-c-n<ret>"
 
-## Language Helpers
-###################========================================--------------------
+# end language server settings
+# -----------------------------------------------------------------------------
 
-## JavaScript TypeScript
-## https://github.com/schemar/kak-jsts
-## -----------------------------------
-## npm i -g eslint-formatter-kakoune
-## brew install jq
-## -----------------------------------
+
+# Language Specific Setups
+# #####################################=======================-----------------
+
+# JavaScript TypeScript
+# https://github.com/schemar/kak-jsts
+# -----------------------------------
+# npm i -g eslint-formatter-kakoune
+# brew install jq
 #plug "schemar/kak-jsts" config %{
 #    hook global WinSetOption filetype=(javascript|typescript) %{
 #        map window user l -docstring 'lint' ': lint<ret>'
@@ -346,41 +180,20 @@ hook global WinSetOption filetype=rust %{
 #        }
 #    }
 #}
+# -----------------------------------
+
+## end language server settings
+# -----------------------------------------------------------------------------
 
 
-# User Experience
-# ###############==============================================================
-
-plug "https://gitlab.com/Screwtapello/kakoune-state-save.git"
-
-hook global KakBegin .* %{
-    state-save-reg-load colon
-    state-save-reg-load pipe
-    state-save-reg-load slash
-}
-
-hook global KakEnd .* %{
-    state-save-reg-save colon
-    state-save-reg-save pipe
-    state-save-reg-save slash
-}
-
-# New Features
-# ============---------------------------------------------
-
-# Vertical Selection
-# https://github.com/occivink/kakoune-vertical-selection
-# ------------------------------------------------------
-plug 'occivink/kakoune-vertical-selection' config %{
-    map global normal <c-V> ': vertical-selection-up<ret>'
-    map global normal <c-v> ': vertical-selection-down<ret>'
-}
-
+# Developer Experience Upgrades and Additional Features
+# #####################################=======================-----------------
+# TODO: add in Tig Mode (suspend to Tig and Back) and git workflow
 
 # KakTree
 # https://github.com/andreyorst/kaktree
 # -------------------------------------
-plug "andreyorst/kaktree" config %{
+plug "andreyorst/kaktree" defer config %{
     hook global WinSetOption filetype=kaktree %{
         remove-highlighter buffer/numbers
         remove-highlighter buffer/matching
@@ -389,100 +202,109 @@ plug "andreyorst/kaktree" config %{
     }
     kaktree-enable
 }
-
-# SideTree
-# https://github.com/topisani/sidetree
-# ------------------------------------
-#plug 'topisani/sidetree'
+# -------------------------------------
 
 # Kakoune Wiki
 # https://github.com/TeddyDD/kakoune-wiki
 #-----------------------------------------
-plug 'TeddyDD/kakoune-wiki'
-wiki-setup %sh{ echo $HOME/cronofiles }
-
-## Git Porcelain
-## https://github.com/chambln/kakoune-kit
-## --------------------------------------
-#plug 'chambln/kakoune-kit' config %{
-#    hook global WinSetOption filetype=git-status %{
-#        map window normal c ': git commit --verbose '
-#        map window normal l ': git log --oneline --graph<ret>'
-#        map window normal d ': -- %val{selections}<a-!><home> git diff '
-#        map window normal D ': -- %val{selections}<a-!><home> git diff --cached '
-#        map window normal a ': -- %val{selections}<a-!><home> git add '
-#        map window normal A ': -- %val{selections}<a-!><home> repl git add -p '
-#        map window normal r ': -- %val{selections}<a-!><home> git reset '
-#        map window normal R ': -- %val{selections}<a-!><home> repl git reset -p '
-#        map window normal o ': -- %val{selections}<a-!><home> git checkout '
-#    }
-#    hook global WinSetOption filetype=git-log %{
-#        map window normal d     ': %val{selections}<a-!><home> git diff '
-#        map window normal <ret> ': %val{selections}<a-!><home> git show '
-#        map window normal r     ': %val{selections}<a-!><home> git reset '
-#        map window normal R     ': %val{selections}<a-!><home> repl git reset -p '
-#        map window normal o     ': %val{selections}<a-!><home> git checkout '
-#    }
-#}
-
-# Kak ANSI
-# https://github.com/eraserhd/kak-ansi
-# ------------------------------------
-plug 'eraserhd/kak-ansi' do %{
-    make
+plug 'TeddyDD/kakoune-wiki' defer %{
+    wiki-setup %sh{ echo $HOME/cronofiles }
 }
+    
+# Auto Pairs
+# https://github.com/dead10ck/auto-pairs.kak
+# ------------------------------------------
+plug 'dead10ck/auto-pairs.kak'
 
 # fzf.kak
 # https://github.com/andreyorst/fzf.kak
 # -------------------------------------
-plug 'andreyorst/fzf.kak'
+plug 'andreyorst/fzf.kak' defer
 
-# Palette.kak
-# https://github.com/alexherbo2/palette.kak
-# -----------------------------------------
-plug "alexherbo2/palette.kak" defer
+# kakuone-filetree
+# https://github.com/occivink/kakoune-filetree
+plug 'occivink/kakoune-filetree' defer
 
-# TODO: Setup with a user mode shortcut
 # kakoune-registers
 # https://github.com/Delapouite/kakoune-registers
 # -----------------------------------------------
 plug 'delapouite/kakoune-registers' defer
 
-## kakoune-buffers
-## https://github.com/Delapouite/kakoune-buffers
-## ---------------------------------------------
-#plug 'delapouite/kakoune-buffers' %{
-#    #map global normal ^ q
-#  #map global normal <a-^> Q
-#
-#  #map global normal q b
-#  #map global normal Q B
-#  #map global normal <a-q> <a-b>
-#  #map global normal <a-Q> <a-B>
-#  #map global normal b ': enter-buffers-mode<ret>' -docstring 'buffers'
-#  #map global normal B ': enter-user-mode -lock buffers<ret>' -docstring 'buffers (lock)'
-#}
+# Kak ANSI
+# https://github.com/eraserhd/kak-ansi
+# ------------------------------------
+plug 'eraserhd/kak-ansi' defer do %{ make }
 
-# Toggle Highlighter
-# https://github.com/alexherbo2/toggle-highlighter.kak
-plug 'alexherbo2/toggle-highlighter.kak' 
-# map -docstring 'Toggle line numbers' global user l ': toggle-highlighter global/number-lines number-lines<ret>'
-# map -docstring 'Toggle line wrap' global user w ': toggle-highlighter global/wrap wrap -word<ret>'
+# TODO: try this one
+#plug 'SolitudeSF/colorcol'
+
+# Kakoune Palette
+# https://github.com/Delapouite/kakoune-palette
+plug 'Delapouite/kakoune-palette' defer
+
+# can't get it to work
+# not sure how to activate this one...
+# Palette.kak
+# https://github.com/alexherbo2/palette.kak
+# -----------------------------------------
+plug "alexherbo2/palette.kak" defer %{
+    palette-enable
+}
+
+# Replace Mode
+# https://github.com/alexherbo2/replace-mode.kak
+# ----------------------------------------------
+plug 'alexherbo2/replace-mode.kak' defer config %{
+    map -docstring 'Replace' global user r ': enter-replace-mode<ret>'
+}
+# TODO: figure out where to put plugin maps, I'm leaning toward "with all the other maps"
+
+# Phantom of the Selection Editor
+# https://github.com/occivink/kakoune-phantom-selection
+# -----------------------------------------------------
+plug 'occivink/kakoune-phantom-selection' config %{
+    map global normal <c-f>     ": phantom-selection-add-selection<ret>"
+    map global normal <c-s-f>     ": phantom-selection-select-all; phantom-selection-clear<ret>"
+    map global normal <a-f> ": phantom-selection-iterate-next<ret>"
+    map global normal <a-F> ": phantom-selection-iterate-prev<ret>"
+}
+
+plug 'delapouite/kakoune-cd' config %{
+  # Suggested mapping
+  map global user c ': enter-user-mode cd<ret>' -docstring 'cd'
+  # Suggested aliases
+  alias global cdb change-directory-current-buffer
+  alias global cdr change-directory-project-root
+  alias global cde edit-current-buffer-directory
+  alias global pwd print-working-directory
+}
 
 # sudo write
 # https://github.com/occivink/kakoune-sudo-write
 # ----------------------------------------------
-plug 'occivink/kakoune-sudo-write' defer
+plug 'occivink/kakoune-sudo-write'
 
-# kakboard
+# FIXME: having trouble getting this one to work
+# Toggle Highlighter
+# https://github.com/alexherbo2/toggle-highlighter.kak
+plug 'alexherbo2/toggle-highlighter.kak' 
+# map -docstring 'Toggle line numbers' global user l ': toggle-highlighter global/number-lines number-lines<ret>'
+# map -docstring 'Toggle line wrap' global user w ': toggle-highlighter global/wrap wrap -word<ret>'lug 'occivink/kakoune-sudo-write' defer
+
+# kakboard (clipboard)
 # https://github.com/lePerdu/kakboard
 # -----------------------------------
-plug "lePerdu/kakboard" defer config %{
-    hook global WinCreate .* %{ kakboard-enable } 
+plug "lePerdu/kakboard" defer config %{ hook global WinCreate .* %{ kakboard-enable } }
+
+# TODO: collect links and instructions
+plug "listentolist/kakounoe-table" domain "gitlab.com" config %{
+    map global user <a-h> ": table-toggle<ret>" -docstring "toggle table mode"
+    map global user h ": enter-user-mode table<ret>" -docstring "table"
+    map global user H ": enter-user-mode -lock table<ret>" -docstring "table (lock)"
 }
 
 # TagBar
-# https://github.com/andreyorst/tagar.kak
+# https://github.com/andreyorst/tagbar.kak
 # ---------------------------------------`
 plug 'andreyorst/tagbar.kak' defer
 
@@ -495,137 +317,352 @@ plug 'andreyorst/tagbar.kak' defer
 # Optional mapping: `map -docstring 'cscope menu' global user 'c' 'w:cscope-menu'
 plug 'yveoch/kakoune-cscope' defer
 
+# kakoune save state
+# https://gitlab.com/Screwtapello/kakoune-state-save
+# --------------------------------------------------
+plug 'https://gitlab.com/Screwtapello/kakoune-state-save' config %{
+    hook global KakBegin .* %{
+        state-save-reg-load colon
+        state-save-reg-load pipe
+        state-save-reg-load slash
+    }
+    hook global KakEnd .* %{
+        state-save-reg-save colon
+        state-save-reg-save pipe
+        state-save-reg-save slash
+    }
+}
+# --------------------------------------------------
+
 # Smarttab
 # https://github.com/andreyorst/smarttab.kak
 # ------------------------------------------
 # noexpandtab - use tab for everything. Tab will insert \t character, and
 # > will use \t character wd en indenting. Aligning cursors with & uses \t
 # character.
-
+#
 # expandtab - use space for everything. Tab will insert %opt{indentwidth}
 # amount of spaces, and > will indent with spaces.
 #
 # smarttab - indent with tab, align with space. Tab will insert \t character
 # if your cursor is inside indentation area, e.g. before any non-whitespace
 # character, and insert spaces if cursor is after any non-whitespace character.
-# Aligning cursors with & uses space.
-plug "andreyorst/smarttab.kak" smarttab %{
-    expandtab
-    # global indentwidth and smarttab have already been set to 4
+plug "andreyorst/smarttab.kak" config %{
+    # CHECK: does this need some revision?
 
+    smarttab
+    
+    # global indentwidth and smarttab have already been set to 4
     # when smarttab is loaded it will become compatible with these settings
     set-option global indentwidth 4
+    set-option global tabstop 4
     # when `backspace' is pressed, 4 spaces are deleted at once
     set-option global softtabstop 4
 
-} config %{
     # these languages will use `expandtab' behavior
     hook global WinSetOption filetype=(fish|rust|markdown|kak|lisp|scheme|sh|perl) expandtab
     # these languages will use `noexpandtab' behavior
     hook global WinSetOption filetype=(makefile|gas) noexpandtab
     # these languages will use `smarttab' behavior
     hook global WinSetOption filetype=(c|cpp) smarttab
-
-    hook global WinSetOption filetype= %{
-        set-option buffer lintcmd 'fish --no-execute'
-	set-option window formatcmd 'fish_indent --write'
-    }
-    hook global WinSetOption filetype=(kaktree|kakrc%{
-        #add-highlighter buffer/numbers
-        #add-highlighter buffer/matching
-        #add-highlighter buffer/show-whitespaces
-        #add-highlighter buffer/wrap
-    }
 }
-
-# I don't know where to put thes, so lt's seee what happens''
-#add-highlighter global/numbers
-#add-highlighter global/matching
-#add-highlighter global/wrap
-#add-highlighter global/show-whitespaces
-
-## Status Lines
-## ============---------------------------------------------
-#
-## Kakship (status line)
-## https://github.com/eburghar/kakship
-## -----------------------------------
-#plug "eburghar/kakship" do %{
-#    	cargo install --force --path . --root ~/.local
-#    		[ ! -e $kak_config/starship.toml ] && cp starship.toml $kak_config/
-#} config %{
-#    	#kakship-enable
-#}
-#
-## Powerline.kak
-## https://github.com/andreyorst/powerline.kak
-## -------------------------------------------
-#plug "andreyorst/powerline.kak" defer powerline_gruvbox %{
-#        powerline-theme gruvbox
-#} config %{
-#        #powerline-start
-#}
-#
-
-# Colorschemes
-# ============---------------------------------------------
-
-# One (light, dark, and darker) [kak-lsp, kakoune-phantom-selection]
-# https://github.com/raiguard/one.kak
-# -----------------------------------
-plug "raiguard/one.kak" theme config %{
-    #colorscheme one-light
-}
-# base16 Gruvbox
-# https://github.com/andreyorst/base16-gruvbox.kak
-# ------------------------------------------------
-plug "andreyorst/base16-gruvbox.kak" theme config %{
-    #colorscheme base16-gruvbox-dark-soft # or any other variant
-}
-            
-# Second Light 
-plug 'vbauerster/second-light' theme
-
-# Primer
-plug "evanrelf/primer.kak" theme config %{
-    #colorscheme primer
-}
-
-# INSTALL UNVERIFIED
-
-# Kakoune Themes (with transparency)
-# https://github.com/anhsirk0/kakoune-themes
 # ------------------------------------------
+
+
+#  vv Vertical Selection vv
+# ------------------------------------------------------
+# I like this one, but not all the time
+# https://github.com/mawww/kakoune/issues/1285#issuecomment-290642871
+#def -params 1 extend-line-down %{
+#  exec "<a-:>%arg{1}X"
+#}
+#def -params 1 extend-line-up %{
+#  exec "<a-:><a-;>%arg{1}K<a-;>"
+#  try %{
+#    exec -draft ';<a-K>\n<ret>'
+#    exec X
+#  }
+#  exec '<a-;><a-X>'
+#}
+#map global normal x ':extend-line-down %val{count}<ret>'
+#map global normal X ':extend-line-up %val{count}<ret>'
+#
+# this one gets in my way
+# https://github.com/occivink/kakoune-vertical-selection
+#plug "evanrelf/byline.kak" config %{
+#    require-module "byline"
+#}
+#
+# I can't get this one to work 
+# https://github.com/occivink/kakoune-vertical-selection
+#plug 'occivink/kakoune-vertical-selection' config %{
+#    map global normal <c-V> ': vertical-selection-up<ret>'
+#    map global normal <c-v> ': vertical-selection-down<ret>'
+#}
+# ------------------------------------------------------
+#  ^^ Vertical Selection ^^
+
+# end UX and DX
+# -----------------------------------------------------------------------------
+
+
+# Aesthetics
+# #####################################=======================-----------------
+
+plug "raiguard/one.kak" theme
+plug "andreyorst/base16-gruvbox.kak" theme
+plug 'vbauerster/second-light' theme
+plug "evanrelf/primer.kak" theme
 plug "anhsirk0/kakoune-themes" theme
-
-########### UNSORTED
-# https://github.com/caksoylar/kakoune-mysticaltutor
 plug 'caksoylar/kakoune-mysticaltutor' theme
-
-# https://github.com/TeddyDD/kakoune-selenizedplug
 plug 'TeddyDD/kakoune-selenized' theme
-#
 plug 'Jackojc/ultrasonic' theme
-#
 plug 'icantjuddle/ayu-kak' theme
-# https://github.com/Icantjuddle/ayu-kak
-#
 plug 'ftonneau/beryl.kak' theme
-# https://github.com/ftonneau/beryl.kak.git
-#
 plug 'gustavo-hms/garbo' theme
-# https://github.com/gustavo-hms/garbo
-#
 plug 'codymlewis/torchwood' theme
-# https://github.com/codymlewis/torchwood
-#
 plug 'caksoylar/kakoune-snow' theme
-# https://github.com/caksoylar/kakoune-snow
-#
 plug 'dracula/kakoune' theme
-# https://draculatheme.com/kakoune
-# https://github.com/dracula/kakoune
-#
 plug 'Delapouite/kakoune-colors' theme
-# https://github.com/Delapouite/kakoune-colors
+plug 'AprilArcus/base16-kakoune' theme
+plug 'gkrrr/kakoune-plain' theme
 
+# end aesthetics
+# -----------------------------------------------------------------------------
+
+
+# Mappings
+# #####################################=======================-----------------
+ 
+# <space> is my leader
+map global normal <space> , -docstring 'leader'
+map global normal <backspace> <space> -docstring 'back to one selection'
+map global normal <a-backspace> <a-space> -docstring 'remove each selection'
+
+# Modes and Menus
+map global user b %{: filetree<ret>} -docstring "Buffers and Project Files"
+map global user f %{: fzf-mode<ret>} -docstring "Fuzzy Finder Mode"
+map global user t %{: kaktree-toggle<ret>} -docstring "KakTree Toggle On/Off"
+map global user l %{: enter-user-mode lsp<ret>} -docstring "Language Server Mode"
+
+map -docstring "Wrap selection with par w79p2fr" global user p '|par w79p2fr<ret>'
+
+# Code Analysis
+map global user o ':cscope ' -docstring 'Find tag with cscope'
+
+# Code Collaboration     
+map global user <F7> ': git status -bs<ret>' -docstring 'git status'
+
+# Wiki
+# FIX: Why aren't these working, where are the logs?
+map -docstring "Open Docs" global user d %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki docs/index.md'<ret> }
+map -docstring "Open Journal" global user j %{: tmux-terminal-horizontal kak -c %val{session} -E 'wiki journal/index.md' 1i<ret> }
+
+# Editing
+map global user 1 -docstring 'Toggle line numbers' ': toggle-highlighter global/ number-lines<ret>'
+map global user 2 -docstring 'Toggle line wrap' ': toggle-highlighter global/ wrap -word<ret>'
+map global user 3 -docstring 'Toggle current word highlight' ': toggle-highlighter global/ CurWord<ret>'
+map global user 4 -docstring 'Toggle show whitespaces' ': toggle-highlighter global/ show-whitespaces<ret>'
+map global normal -docstring 'comment line' '#' ': comment-line<ret>'
+map global normal -docstring 'comment block' '<a-#>' ': comment-block<ret>'
+map global normal -docstring 'delete line' 'D' '<s-x>d'
+map global normal -docstring 'yank line' Y <s-x>y
+
+# kak administration
+map -docstring "Edit ~/.config/kak/kakrc" global user e ":edit ~/.config/kak/kakrc<ret>"
+map -docstring "Source ~/.config/kak/kakrc" global user r ":source ~/.config/kak/kakrc<ret>"
+
+# New Panes TODO: allow them to take arguments and override defaults
+map global user V %{: tmux-terminal-vertical kak -c %val{session} <space><ret> } -docstring "New Kakoune Below"
+map global user > %{: tmux-terminal-horizontal kak -c %val{session} <space><ret> } -docstring "New Kakoune to Right"
+map global user v %{: tmux-terminal-vertical fish<ret> } -docstring "New Terminal Below"
+map global user . %{: tmux-terminal-horizontal fish<ret> } -docstring "New Terminal to Right"
+
+# end mappings
+# -----------------------------------------------------------------------------
+
+
+# Functions
+# #####################################=======================-----------------
+
+# todo: function to turn on wrapping
+declare-option -hidden bool WrappingOn 
+set-option global WrappingOn false
+#add-highlighter window/wrap wrap -word -indent -marker 'ᐞ'
+
+# TODO: map this and try it out
+def -hidden -docstring \
+'select a word under cursor, or add cursor on next occurrence of current selection' \
+select-or-add-cursor %{
+    try %{
+        exec "<a-k>\A.\z<ret>"
+        exec -save-regs '' "_<a-i>w*"
+    } catch %{
+        exec -save-regs '' "_*<s-n>"
+    } catch nop
+}
+
+def clean-trailing-whitespace -docstring 'Remove trailing whitespace' %{
+    try %{ exec -draft '%s\h+$<ret>d' }
+}
+
+def italics-are-awesome -docstring 'turn on italics' %{
+    set-face global comment rgb:70798a+i
+}
+
+# functions stolen from SolitudeSF https://github.com/SolitudeSF/dot/blob/master/kak/kakrc
+
+def type -params 1 -docstring 'Set buffer filetype' %{
+    set buffer filetype %arg{1}
+}
+
+def lint-engage -docstring 'Enable linting' %{
+    lint-enable
+    map buffer user -docstring "next error" l ': lint-next-error<ret>'
+    map buffer user -docstring "previous error" L ': lint-previous-error<ret>'
+}
+
+def lsp-engage -docstring 'Enable language server' %{
+    lsp-enable
+    lsp-auto-hover-enable
+    map buffer user -docstring 'Enter lsp user mode' <a-l> ': enter-user-mode lsp<ret>'
+}
+
+def lsp-semantic-highlighting -docstring 'Enable semantic highlighting' %{
+    hook window -group semantic-tokens BufReload .* lsp-semantic-tokens
+    hook window -group semantic-tokens NormalIdle .* lsp-semantic-tokens
+    hook window -group semantic-tokens InsertIdle .* lsp-semantic-tokens
+    hook -once -always window WinSetOption filetype=.* %{
+        remove-hooks window semantic-tokens
+    }
+}
+
+def set-indent -params 1 -docstring 'Set indentation width' %{
+    set buffer indentwidth %arg{1}
+    set buffer tabstop %arg{1}
+    set buffer softtabstop %arg{1}
+}
+
+def tabs-never -params 1 -docstring 'Indent with spaces' %{
+    expandtab
+    set-indent %arg{1}
+}
+
+def tabs-always -params 1 -docstring 'Indent with spaces' %{
+    noexpandtab
+    set-indent %arg{1}
+}
+
+
+# Options
+# #####################################=======================-----------------
+
+colorscheme second-light
+#colorscheme one-darker
+#colorscheme garbo # transparent
+#colorscheme beryl # transparent
+#colorscheme derezzed
+
+set-option global scrolloff 2,4
+
+set global autoreload yes
+set global grepcmd 'rg -iHL --column'
+set global modelinefmt '%opt{git_branch_str}%val{bufname}
+%val{cursor_line}:%val{cursor_char_column} {{mode_info}}
+{{context_info}}◂%val{client}⊙%val{session}▸'
+
+decl -docstring "git branch holding the current buffer" str git_branch
+decl -docstring "modeline string with git branch" -hidden str git_branch_str
+
+def refresh-git-branch %{ eval %sh{
+  branch=$(cd "$(dirname "${kak_buffile}")" && git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ -n "${branch}" ]; then
+      printf "set window git_branch %%{${branch}}\nset window git_branch_str %%{${branch} }"
+  fi
+} }
+
+# Change modeline color in insert mode:
+hook global ModeChange insert:.* %{
+    #set-face global StatusLine      cyan,default
+}
+hook global ModeChange .*:insert %{
+    #set-face global StatusLine      rgb:696969,rgb:f0e68c''
+}
+
+# Filetype Hooks
+# #####################################=======================-----------------
+
+hook global WinSetOption filetype=(fish) %{
+    set-option buffer lintcmd 'fish --no-execute'
+set-option window formatcmd 'fish_indent --write'
+}
+hook global WinSetOption filetype=(kaktree|kakrc) %{
+    #add-highlighter buffer/numbers
+    add-highlighter buffer/matching
+    #add-highlighter buffer/show-whitespaces
+    add-highlighter buffer/wrap
+}
+
+# Highlighters and Hooks
+# #####################################=======================-----------------
+
+add-highlighter global/ show-matching
+add-highlighter global/ dynregex '%reg{/}' 0:+u
+
+hook global WinCreate ^[^*]+$ %{
+    add-highlighter window/ number-lines -hlcursor
+
+    beryl-enable-changing-cursor
+}
+
+
+# Highlight the word under the cursor
+declare-option -hidden regex curword
+set-face global CurWord rgb:442233,rgb:fda134
+
+hook global NormalIdle .* %{
+    eval -draft %{ try %{
+        exec <space><a-i>w <a-k>\A\w+\z<ret>
+        set-option buffer curword "\b\Q%va
+        l{selection}\E\b"
+    } catch %{
+        set-option buffer curword ''
+    } }
+}
+
+add-highlighter global/ dynregex '%opt{curword}' 0:CurWord
+
+# Highlight TooDoos
+# =================
+# 
+# FIX: Todos shouldn't be highlighted in code but only in comments.
+# TODO: Figure out Why the \FIX on the error line does not highlight when next
+# TODO: Use RGBA so the backgrounds fade
+# to a space that is part of another's highlight. It _shouldn't_ be a problem
+# in practice because these _shouldn't_ be that close together.
+# TODO: highlight of todo(should include the end parenthesis) 
+# INFO: The rest of these are here as examples :)
+# 
+# \INFO We don't hightlight todo in a wOw! sentence, YAY! unless it's a \TODO in
+# all caps. Ususally we want a lowercase todo with punctuation after it to
+# be highlighted, W\ARN: but not when we end a sentence with todo.
+#  
+# Examples:
+# Yay: wow!  yes!!!  No need to turn these off all the time, IMHO
+# Info: \INFO  \NOTE!    \CHECK:   \CHECK here is the information
+# Warn: \TODO \TODO: todo(alice) \Todo: \ToDo:
+# Error: \LOL \FIX \XXX!
+set-face global TooDooYay 	rgb:3cb371,rgba:ffffff17+iF
+set-face global TooDooInfo 	rgb:0f0f0f,rgba:00ddcc99+F
+set-face global TooDooWarn 	rgb:0f0f0f,rgba:fda13499+bF
+set-face global TooDooError 	rgb:0f0f0f,rgba:b0505099+biF
+
+add-highlighter global/TooDoos  group -passes colorize
+add-highlighter global/TooDoos/ regex ((?i)\h(yay|wow|yes)[!]{1,}.)     1:TooDooYay
+add-highlighter global/TooDoos/ regex (\h(INFO|NOTE|CHECK).) 	1:TooDooInfo
+add-highlighter global/TooDoos/ regex (\h(TODO|WARN).) 	            	1:TooDooWarn
+add-highlighter global/TooDoos/ regex (?i)((@|\h)ToDo[.|\(])        	1:TooDooWarn
+add-highlighter global/TooDoos/ regex (\h(LOL|FIX|FIXME|[X]{3,}).)  	1:TooDooError
+
+# end highlights
+# -----------------------------------------------------------------------------
